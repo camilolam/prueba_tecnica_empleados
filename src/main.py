@@ -1,5 +1,6 @@
 # Se van a hacer dos posibles bases de datos, sqlite y mysql
-import mysql # own document
+import classes.mysql as mysql# own document
+import classes.person as person
 import sqlite3 # database on files 
 import logging # logs making 
 
@@ -16,6 +17,9 @@ class income_control:
     guests = []
     suppliers = []
     people = 0
+
+
+
 
 if __name__=='__main__':
     db1=mysql.mysqlDb()
