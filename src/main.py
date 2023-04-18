@@ -14,11 +14,16 @@ if __name__ == '__main__':
     try:
         company = income_control.income_control()
         # logging.info(company.all_people_in())
+        # company.add_employs('jorge montoya', '133636343563', 2)
+        # company.add_guest('Victor Escobar', '46623737')
+        # company.add_supplier('Laura Rodriguez', '6784575654')
 
+        # company.edit_supplier('Laura Rodriguez', '1234567890', 6)
+        company.delete_person(7)
         # company.entrance(1)
         # time.sleep(1000)
         # company.departure(1)
-        company.all_people_in()
+        # company.all_people_in()
         # logging.debug(datetime.datetime.now().time())
         # logging.debug(datetime.datetime.now().date())
 
