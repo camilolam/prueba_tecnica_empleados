@@ -49,7 +49,8 @@ class mysqlDb:
             cursor.execute(sql)
             db.commit()
             db.close()
-        except:
+        except Exception as ex:
+            logging.error(ex)
             logging.error('error al insertar el registro')
 
     

@@ -4,7 +4,7 @@ class person:
     document = '' # identification number
     id_type = 0
     id_area = 0
-    state = '' # into the company or out the company
+    
     
 
     def  __init__(self,id_person, name, document, id_type, id_area): 
