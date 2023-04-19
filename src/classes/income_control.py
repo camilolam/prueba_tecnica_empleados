@@ -16,14 +16,22 @@ class income_control:
 
     def entrance(self, id_person):
         try:
-            time_ = datetime.datetime.now().time()
-            date = datetime.datetime.now().date()
-            persona = self.db.query_select_one(
-                'SELECT * FROM people_list WHERE id_person={}'.format(id_person))
-            id_area = persona[4]
-            self.db.query_insert('INSERT INTO registers (date,id_person,entrance,area,company_in) values("{}",{},"{}",{},True)'.format(
-                date, id_person, time_, id_area))
-            logging.debug('Se ha registrado correctamente el ingreso')
+            before_register = self.db.query_select_all(
+                'select * from registers where (time_worked = 0) and (id_person = {})'.format(id_person))
+            logging.debug(before_register)
+            if before_register == -1 or before_register == None:
+                time_ = datetime.datetime.now().time()
+                date = datetime.datetime.now().date()
+                persona = self.db.query_select_one(
+                    'SELECT * FROM people_list WHERE id_person={}'.format(id_person))
+                id_area = persona[4]
+                self.db.query_insert('INSERT INTO registers (date,id_person,entrance,area,company_in) values("{}",{},"{}",{},True)'.format(
+                    date, id_person, time_, id_area))
+                logging.debug('Se ha registrado correctamente el ingreso')
+
+            else:
+                logging.debug(
+                    'No se puede ingresar nuevamente, tienes que registrar la salida')
         except Exception as ex:
             logging.error('problemas al registrar el ingreso')
             logging.error(ex)
@@ -47,8 +55,13 @@ class income_control:
                 time_worked = self.db.query_select_one(
                     'SELECT TIMESTAMPDIFF(HOUR, entrance, departure) as horas FROM registers WHERE id_register={}'.format(registers[0][0]))
                 logging.debug('tiempo trabajado: {}'.format(time_worked[0]))
-                self.db.query_insert('UPDATE registers SET time_worked="{}",company_in=False WHERE id_register = {}'.format(
-                    time_worked[0], registers[0][0]))
+                if time_worked[0] <= 0:
+                    self.db.query_insert(
+                        'UPDATE registers SET time_worked="1",company_in=False WHERE id_register = {}'.format(registers[0][0]),)
+                else:
+                    self.db.query_insert('UPDATE registers SET time_worked="{}",company_in=False WHERE id_register = {}'.format(
+                        time_worked[0], registers[0][0]))
+
                 logging.debug('Se ha registrado correctamente la salida')
 
             else:
@@ -73,7 +86,7 @@ class income_control:
 
                         else:
                             logging.debug(
-                                'tiempo trabajado: 1'.format(time_worked[0]))
+                                'tiempo trabajado: {}'.format(time_worked[0]))
                             self.db.query_insert('UPDATE registers SET time_worked="{}",company_in=False WHERE id_register = {}'.format(
                                 time_worked[0], registers[i][0]))
                         logging.debug(
@@ -89,7 +102,8 @@ class income_control:
                         'No hay salidas para registrar con el id : {}'.format(id_person))
                 else:
                     logging.debug(
-                        'Se ha registrado correctamente la salida boom')
+                        'Se ha registrado correctamente la salida')
+
         except Exception as ex:
             logging.error('problemas al registrar la salida')
             logging.error(ex)
@@ -178,4 +192,78 @@ class income_control:
 
         except Exception as ex:
             logging.error('problemas al eliminar a la persona')
+            logging.error(ex)
+
+    def leave_early(self, id_person, excuse):
+        time_ = datetime.datetime.now().time()
+        try:
+            logging.info('Nos fuimos temprano')
+            registers = self.db.query_select_all(
+                'select * from registers where id_person = {}'.format(id_person))
+
+            if registers == None:
+                logging.debug(
+                    'No hay registros con el id {}'.format(id_person))
+
+            elif len(registers) == 1:
+                if registers[0][5] == 0:
+                    logging.debug(
+                        'Hay 1 solo registro con el id {}'.format(id_person))
+                    self.db.query_insert(
+                        'UPDATE registers SET departure="{}" WHERE id_person={}'.format(time_, id_person))
+                    # me permite conocer las hora trabajadar por el trabajador que estoy buscando.
+                    time_worked = self.db.query_select_one(
+                        'SELECT TIMESTAMPDIFF(HOUR, entrance, departure) as horas FROM registers WHERE id_register={}'.format(registers[0][0]))
+                    if time_worked[0] <= 0:
+                        self.db.query_insert('UPDATE registers SET time_worked="1",company_in=False, early=True, excuse = {} WHERE id_register = {}'.format(
+                            excuse, registers[0][0]),)
+
+                    else:
+                        self.db.query_insert('UPDATE registers SET time_worked="{}",company_in=False, early=True, excuse = {} WHERE id_register = {}'.format(
+                            time_worked[0, excuse], registers[0][0]))
+                    logging.debug(
+                        'Se ha registrado correctamente la salida temprano')
+                else:
+                    logging.debug('No hay salidas que registrar')
+
+            else:
+                logging.debug('{} registros con el id {}'.format(
+                    len(registers), id_person))
+
+                i = 0
+                find = False
+                while find == False and i < len(registers):
+                    if registers[i][5] == 0:
+                        self.db.query_insert('UPDATE registers SET departure="{}" WHERE id_register = {}'.format(
+                            time_, registers[i][0]))
+                        find = True
+                        time_worked = self.db.query_select_one(
+                            'SELECT TIMESTAMPDIFF(HOUR, entrance, departure) as horas FROM registers WHERE id_register={}'.format(registers[i][0]))  # me permite conocer las hora trabajadar por el trabajador que estoy buscando.
+
+                        if time_worked[0] <= 0:
+                            logging.debug(
+                                'tiempo trabajado: 1')
+                            self.db.query_insert(
+                                'UPDATE registers SET time_worked="1",company_in=False, early=True, excuse = {} WHERE id_register = {}'.format(excuse, registers[i][0]))
+
+                        else:
+                            logging.debug(
+                                'tiempo trabajado: {}'.format(time_worked[0]))
+                            self.db.query_insert('UPDATE registers SET time_worked="{}",company_in=False, early=True, excuse = {} WHERE id_register = {}'.format(
+                                time_worked[0], excuse, registers[i][0]))
+                        logging.debug(
+                            'id_registro: {}'.format(registers[i][0]))
+                        break
+                    i += 1
+
+                if i == (len(registers)):
+                    logging.debug(
+                        'No hay salidas para registrar con el id : {}'.format(id_person))
+
+                else:
+                    logging.debug(
+                        'Se ha registrado correctamente la salida temprano')
+
+        except Exception as ex:
+            logging.error('problemas con la salida temprano')
             logging.error(ex)
