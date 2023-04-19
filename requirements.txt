@@ -1,2 +1,4 @@
-librerias necesarias
-* pymysql -> (pip install pymysql)
+librerias
+
+* pymysql -> (pip install pymysql) : generar conexión con mysql
+* pysimplegui -> (pip install PySimpleGUIQt) : para la interfaz grafica
