@@ -4,6 +4,12 @@ import sqlite3  # database on files
 import logging  # logs making
 import datetime
 
+# DEBUG =10
+# INFO = 20
+# WARNING = 30
+# ERROR = 40
+# CRITICAL = 50
+
 
 class income_control:
     people = 0
@@ -16,17 +22,19 @@ class income_control:
 
     def entrance(self, id_person):
         try:
-            before_register = self.db.query_select_all(
-                'select * from registers where (time_worked = 0) and (id_person = {})'.format(id_person))
-            logging.debug(before_register)
-            if before_register == -1 or before_register == None:
+            before_register = self.db.getPerson_registers(id_person)
+            count = 0
+            for register in before_register:
+                if register[5] == 0:
+                    count += 1
+
+            if count == 0:
                 time_ = datetime.datetime.now().time()
                 date = datetime.datetime.now().date()
-                persona = self.db.query_select_one(
-                    'SELECT * FROM people_list WHERE id_person={}'.format(id_person))
+                persona = self.db.getPerson(id_person)
                 id_area = persona[4]
-                self.db.query_insert('INSERT INTO registers (date,id_person,entrance,area,company_in) values("{}",{},"{}",{},True)'.format(
-                    date, id_person, time_, id_area))
+                id_type = persona[3]
+                self.db.add_register(date, id_person, time_, id_area, id_type)
                 logging.debug('Se ha registrado correctamente el ingreso')
 
             else:
@@ -39,9 +47,7 @@ class income_control:
     def departure(self, id_person):
         try:
             time_ = datetime.datetime.now().time()
-            registers = self.db.query_select_all(
-                'SELECT * FROM registers WHERE id_person={}'.format(id_person))
-
+            registers = self.db.getPerson_registers(id_person)
             if registers == None:
                 logging.debug(
                     'No hay registros con el id {}'.format(id_person))
@@ -49,20 +55,21 @@ class income_control:
             elif len(registers) == 1:
                 logging.debug(
                     'hay 1 solo registro con el id {}'.format(id_person))
-                self.db.query_insert(
-                    'UPDATE registers SET departure="{}" WHERE id_person={}'.format(time_, id_person))
-                # me permite conocer las hora trabajadar por el trabajador que estoy buscando.
-                time_worked = self.db.query_select_one(
-                    'SELECT TIMESTAMPDIFF(HOUR, entrance, departure) as horas FROM registers WHERE id_register={}'.format(registers[0][0]))
-                logging.debug('tiempo trabajado: {}'.format(time_worked[0]))
-                if time_worked[0] <= 0:
-                    self.db.query_insert(
-                        'UPDATE registers SET time_worked="1",company_in=False WHERE id_register = {}'.format(registers[0][0]),)
-                else:
-                    self.db.query_insert('UPDATE registers SET time_worked="{}",company_in=False WHERE id_register = {}'.format(
-                        time_worked[0], registers[0][0]))
+                if registers[0][5] == 0:
+                    self.db.register_departure(time_, registers[0][0])
+                    time_worked = self.db.get_time_worked(registers[0][0])
+                    logging.debug(
+                        'tiempo trabajado: {}'.format(time_worked[0]))
 
-                logging.debug('Se ha registrado correctamente la salida')
+                    if time_worked[0] <= 0:
+                        self.db.register_time_worked(1, registers[0][0])
+                    else:
+                        self.db.register_time_worked(
+                            time_worked[0], registers[0][0])
+
+                    logging.debug('Se ha registrado correctamente la salida')
+                else:
+                    logging.debug('No hay salidas que registrar')
 
             else:
                 logging.debug('{} registros con el id {}'.format(
@@ -72,30 +79,22 @@ class income_control:
                 find = False
                 while find == False and i < len(registers):
                     if registers[i][5] == 0:
-                        self.db.query_insert('UPDATE registers SET departure="{}" WHERE id_register = {}'.format(
-                            time_, registers[i][0]))
+                        self.db.register_departure(time_, registers[i][0])
                         find = True
-                        time_worked = self.db.query_select_one(
-                            'SELECT TIMESTAMPDIFF(HOUR, entrance, departure) as horas FROM registers WHERE id_register={}'.format(registers[i][0]))  # me permite conocer las hora trabajadar por el trabajador que estoy buscando.
+                        time_worked = self.db.get_time_worked(registers[i][0])
 
                         if time_worked[0] <= 0:
-                            logging.debug(
-                                'tiempo trabajado: 1')
-                            self.db.query_insert(
-                                'UPDATE registers SET time_worked="1",company_in=False WHERE id_register = {}'.format(registers[i][0]))
+                            self.db.register_time_worked(1, registers[i][0])
 
                         else:
-                            logging.debug(
-                                'tiempo trabajado: {}'.format(time_worked[0]))
-                            self.db.query_insert('UPDATE registers SET time_worked="{}",company_in=False WHERE id_register = {}'.format(
-                                time_worked[0], registers[i][0]))
+                            self.db.register_time_worked(
+                                time_worked[0], registers[i][0])
+
                         logging.debug(
-                            'id_registro: {}'.format(registers[i][0]))
+                            'id_registro: {}, horas trabajadas: {}'.format(registers[i][0], time_worked[0]))
                         break
 
                     i += 1
-                # logging.debug('indice: {}'.format(i))
-                # logging.debug('tamano - 1 : {}'.format((len(registers))))
 
                 if i == (len(registers)):
                     logging.debug(
@@ -106,22 +105,6 @@ class income_control:
 
         except Exception as ex:
             logging.error('problemas al registrar la salida')
-            logging.error(ex)
-
-    def all_people_in(self):
-        try:
-            people = self.db.query_select_all(
-                'SELECT distinct id_person FROM registers WHERE company_in = True')
-            logging.debug('PERSONAS DENTRO DE LA COMPANIA')
-            if len(people) <= 0 or people == None:
-                logging.debug('No hay personas, dentro de la compañía')
-            else:
-                logging.debug(
-                    'hay {} personas dentro de la Compañía'.format(len(people)))
-
-        except Exception as ex:
-            logging.error(
-                'problemas al consultar el número de personas en la compañía')
             logging.error(ex)
 
     def add_employs(self, name, document, area):
@@ -198,8 +181,7 @@ class income_control:
         time_ = datetime.datetime.now().time()
         try:
             logging.info('Nos fuimos temprano')
-            registers = self.db.query_select_all(
-                'select * from registers where id_person = {}'.format(id_person))
+            registers = self.db.getPerson_registers(id_person)
 
             if registers == None:
                 logging.debug(
@@ -209,18 +191,17 @@ class income_control:
                 if registers[0][5] == 0:
                     logging.debug(
                         'Hay 1 solo registro con el id {}'.format(id_person))
-                    self.db.query_insert(
-                        'UPDATE registers SET departure="{}" WHERE id_person={}'.format(time_, id_person))
-                    # me permite conocer las hora trabajadar por el trabajador que estoy buscando.
-                    time_worked = self.db.query_select_one(
-                        'SELECT TIMESTAMPDIFF(HOUR, entrance, departure) as horas FROM registers WHERE id_register={}'.format(registers[0][0]))
+                    self.db.register_departure(time_, registers[0][0])
+
+                    time_worked = self.db.get_time_worked(registers[0][0])
                     if time_worked[0] <= 0:
-                        self.db.query_insert('UPDATE registers SET time_worked="1",company_in=False, early=True, excuse = {} WHERE id_register = {}'.format(
-                            excuse, registers[0][0]),)
+                        self.db.register_time_worked_early(
+                            1, excuse, registers[0][0])
 
                     else:
-                        self.db.query_insert('UPDATE registers SET time_worked="{}",company_in=False, early=True, excuse = {} WHERE id_register = {}'.format(
-                            time_worked[0, excuse], registers[0][0]))
+                        self.db.register_time_worked_early(
+                            time_worked[0], excuse, registers[0][0])
+
                     logging.debug(
                         'Se ha registrado correctamente la salida temprano')
                 else:
@@ -234,23 +215,18 @@ class income_control:
                 find = False
                 while find == False and i < len(registers):
                     if registers[i][5] == 0:
-                        self.db.query_insert('UPDATE registers SET departure="{}" WHERE id_register = {}'.format(
-                            time_, registers[i][0]))
+                        self.db.register_departure(time_, registers[0][0])
                         find = True
-                        time_worked = self.db.query_select_one(
-                            'SELECT TIMESTAMPDIFF(HOUR, entrance, departure) as horas FROM registers WHERE id_register={}'.format(registers[i][0]))  # me permite conocer las hora trabajadar por el trabajador que estoy buscando.
+                        time_worked = self.db.get_time_worked(registers[0][0])
 
                         if time_worked[0] <= 0:
-                            logging.debug(
-                                'tiempo trabajado: 1')
-                            self.db.query_insert(
-                                'UPDATE registers SET time_worked="1",company_in=False, early=True, excuse = {} WHERE id_register = {}'.format(excuse, registers[i][0]))
+                            self.db.register_time_worked_early(
+                                1, excuse, registers[i][0])
 
                         else:
-                            logging.debug(
-                                'tiempo trabajado: {}'.format(time_worked[0]))
-                            self.db.query_insert('UPDATE registers SET time_worked="{}",company_in=False, early=True, excuse = {} WHERE id_register = {}'.format(
-                                time_worked[0], excuse, registers[i][0]))
+                            self.db.register_time_worked_early(
+                                time_worked[0], excuse, registers[i][0])
+
                         logging.debug(
                             'id_registro: {}'.format(registers[i][0]))
                         break
@@ -267,3 +243,18 @@ class income_control:
         except Exception as ex:
             logging.error('problemas con la salida temprano')
             logging.error(ex)
+
+    def get_registers_by_date(self, date):
+        data = self.db.get_register_by_date(date)
+        return data
+
+    def get_registers(self, type):
+        datetime.datetime
+        info = {
+            'registers': self.db.get_registers(),
+            'employs': self.db.get_register_by_employs(),
+            'guests': self.db.get_register_by_guests(),
+            'suppliers': self.db.get_register_by_suppliers(),
+        }
+        # logging.debug(info[type])
+        return info[type]
