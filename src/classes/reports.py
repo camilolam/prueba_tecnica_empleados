@@ -1,5 +1,6 @@
 import classes.mysql as mysql
 import logging
+import datetime
 
 logging.basicConfig(level=logging.DEBUG)
 # DEBUG =10
@@ -32,4 +33,29 @@ class report:
         except Exception as ex:
             logging.error(
                 'problemas al consultar el número de personas en la compañía')
+            logging.error(ex)
+
+    def report_time_worked_by_employ(self):
+        try:
+            id_employs_registers = self.db.get_register_by_employs_distinct()
+            logging.debug(id_employs_registers)
+            # today_ = date
+            today = datetime.datetime.now().date()
+
+            for id in id_employs_registers:
+                registers = self.db.getPerson_registers(id[0])
+                logging.debug('hay {} registro con el id {}'.format(
+                    len(registers), id[0]))
+                total = 0
+                for reg in registers:
+                    if reg[1] == today:
+                        logging.debug(reg)
+                        total += int(reg[5])
+
+                self.db.register_report_time_worked(
+                    today, id[0], reg[7], total)
+
+        except Exception as ex:
+            logging.error(
+                'No se ha podido generar el reporte de las horas trabajadas')
             logging.error(ex)

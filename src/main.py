@@ -3,6 +3,7 @@ import classes.income_control as income_control
 import logging  # logs making
 import classes.reports as reports
 import datetime
+import time
 
 # DEBUG =10
 # INFO = 20
@@ -15,9 +16,9 @@ logging.basicConfig(level=logging.DEBUG)
 if __name__ == '__main__':
     try:
         company = income_control.income_control()
-        report1 = reports.report()
-
-        # report1.all_people_in()
+        report = reports.report()
+        # report.report_time_worked_by_employ()
+        # report.all_people_in()
         # logging.info(company.all_people_in())
         # company.add_employs('jorge montoya', '133636343563', 2)
         # company.add_guest('Victor Escobar', '46623737')
@@ -25,24 +26,27 @@ if __name__ == '__main__':
 
         # company.edit_supplier('Laura Rodriguez', '1234567890', 6)
         # company.delete_person(5)
-        # company.entrance(1)
-        # company.entrance(3)
+        company.entrance(1)
+        company.entrance(3)
         # company.entrance(6)
         # company.entrance(4)
-        #    time.sleep(1000)
-        # company.departure(1)
+        time.sleep(1)
+        company.departure(1)
+        company.departure(3)
+        time.sleep(1)
+        report.report_time_worked_by_employ()
         # company.all_people_in()
         # company.leave_early(3, 1)
 
-        data = company.get_registers('registers')
-        # data1 = company.get_registers('guests')
-        # data2 = company.get_registers('employs')
-        # data3 = company.get_registers('suppliers')
+        # data = company.get_registers('registers')
+        # # data1 = company.get_registers('guests')
+        # # data2 = company.get_registers('employs')
+        # # data3 = company.get_registers('suppliers')
 
-        date = datetime.datetime.now().date()
-        info = company.get_registers_by_date(date)
+        # date = datetime.datetime.now().date()
+        # info = company.get_registers_by_date(date)
 
-        logging.debug(len(info))
+        # logging.debug(len(info))
         # logging.debug(data)
         # logging.debug(len(data1))
         # logging.debug(len(data2))
@@ -51,4 +55,3 @@ if __name__ == '__main__':
     except Exception as ex:
         logging.error('Error en el funcionamiento de la app')
         logging.error(ex)
-        logging.info('Revisa la conexión a internet')

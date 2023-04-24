@@ -1,7 +1,7 @@
 # clases para realizar al conexion con mysql
 import pymysql
-import sys
 import logging
+import json
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -46,6 +46,11 @@ class mysqlDb:
         data = self.query_select_all(sql)
         return data
 
+    def get_register_by_employs_distinct(self):
+        sql = 'SELECT distinct id_person FROM registers WHERE id_type = 1'
+        data = self.query_select_all(sql)
+        return data
+
     def get_register_by_guests(self):
         sql = 'SELECT * FROM registers WHERE id_type = 2'
         data = self.query_select_all(sql)
@@ -80,6 +85,11 @@ class mysqlDb:
     def register_time_worked_early(self, time_worked, excuse, id_register):
         sql = 'UPDATE registers SET time_worked="{}",company_in=False, early=True, excuse = {} WHERE id_register = {}'.format(
             time_worked, excuse, id_register)
+        self.query_insert(sql)
+
+    def register_report_time_worked(self, date, id_person, id_area, time_worked):
+        sql = 'INSERT INTO report_time_worked (date,id_person,id_area,all_time_work) values("{}",{},"{}",{})'.format(
+            date, id_person, id_area, time_worked)
         self.query_insert(sql)
 
     # --------------
