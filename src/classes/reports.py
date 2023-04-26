@@ -72,9 +72,6 @@ class report:
             areas = self.db.query_select_all('select id_area from areas')
             logging.debug(areas)
             area_time = {}
-            # for area in areas:
-            #     area_time[area[0]] = 0
-
             logging.debug(area_time)
             for area in areas:
                 area_time[area[0]] = 0
