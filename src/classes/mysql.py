@@ -92,6 +92,11 @@ class mysqlDb:
             date, id_person, id_area, time_worked)
         self.query_insert(sql)
 
+    def get_employ_time(self):
+        sql = 'SELECT * FROM report_time_worked '
+        data = self.query_select_all(sql)
+        return data
+
     # --------------
 
     def query_select_all(self, sql):
